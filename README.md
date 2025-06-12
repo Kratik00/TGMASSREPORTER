@@ -15,10 +15,10 @@ The script uses Telethon to automate reporting of a specific Telegram user/chann
 
 ```
 TGREPORTER/
-”reper.py            # Main script
-”requirements.txt    # Python dependencies
-”README.md           # Overview of the tool
-”sessions/           # Folder where all Telegram sessions are stored
+reper.py            # Main script
+requirements.txt    # Python dependencies
+README.md           # Overview of the tool
+sessions/           # Folder where all Telegram sessions are stored
 ```
 
 ---
