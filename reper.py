@@ -110,6 +110,7 @@ async def main():
         await report_user(args.target, args.mode, args.repeat or 1)
     else:
         print("Usage:")
+        print("  Commands:    python3 reper.py --help")
         print("  Add session: python3 reper.py -an +1234567890")
         print("  Report user: python3 reper.py -t target_username -r 100 -m spam")
 
