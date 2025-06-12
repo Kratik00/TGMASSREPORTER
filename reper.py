@@ -33,17 +33,31 @@ reason_map = {
 }
 
 def show_banner():
-    print(f"{Fore.RED}{Style.BRIGHT}")
-    print("██████╗░███████╗░█████╗░██████╗░███████╗██████╗░")
-    print("██╔══██╗██╔════╝██╔══██╗██╔══██╗██╔════╝██╔══██╗")
-    print("██║░░██║█████╗░░██║░░██║██║░░██║█████╗░░██████╔╝")
-    print("██║░░██║██╔══╝░░██║░░██║██║░░██║██╔══╝░░██╔═══╝░")
-    print("██████╔╝███████╗╚█████╔╝██████╔╝███████╗██║░░░░░")
-    print("╚═════╝░╚══════╝░╚════╝░╚═════╝░╚══════╝╚═╝░░░░░")
-    print(f"{Fore.CYAN}           ⚡ LUCIFER TGREPORTER - BEST TELEGRAM TOOL ⚡")
-    print(f"{Fore.YELLOW}               By: @LP_LUCIFER")
-    print(Style.RESET_ALL)
+    print(Style.BRIGHT + Fore.RED + "\n" + "═" * 90)
 
+    # TRIPLE SIZE TGREPORTER
+    tgrep = [
+        Fore.RED + "T",
+        Fore.YELLOW + "G",
+        Fore.GREEN + "R",
+        Fore.CYAN + "E",
+        Fore.MAGENTA + "P",
+        Fore.BLUE + "O",
+        Fore.LIGHTYELLOW_EX + "R",
+        Fore.LIGHTMAGENTA_EX + "T",
+        Fore.LIGHTCYAN_EX + "E",
+        Fore.LIGHTRED_EX + "R"
+    ]
+    tg_line = "  ".join(tgrep)
+    print(f"{Style.BRIGHT}{tg_line.center(90)} {Fore.LIGHTGREEN_EX}🔰")
+
+    # Subtitle
+    print(Fore.LIGHTCYAN_EX + "Telegram Mass Reporter Tool".center(90))
+    print(Fore.LIGHTMAGENTA_EX + "Built with ❤️ by @LP_LUCIFER".center(90))
+
+    # GitHub with pink + yellow
+    print(Fore.LIGHTMAGENTA_EX + "GitHub: " + Fore.YELLOW + "https://github.com/LP-LUCIFER".center(83))
+    print(Fore.RED + "═" * 90 + Style.RESET_ALL + "\n")
 async def add_account(phone):
     client = TelegramClient(phone, api_id, api_hash)
     await client.connect()
