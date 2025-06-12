@@ -56,7 +56,7 @@ def show_banner():
     print(Fore.LIGHTMAGENTA_EX + "Built with ❤️ by @LP_LUCIFER".center(90))
 
     # GitHub with pink + yellow
-    print(Fore.LIGHTMAGENTA_EX + "GitHub: " + Fore.YELLOW + "https://github.com/LP-LUCIFER".center(83))
+    print(Fore.LIGHTMAGENTA_EX + "GitHub: " + Fore.YELLOW + "https://github.com/Kratik00".center(83))
     print(Fore.RED + "═" * 90 + Style.RESET_ALL + "\n")
 async def add_account(phone):
     client = TelegramClient(phone, api_id, api_hash)
