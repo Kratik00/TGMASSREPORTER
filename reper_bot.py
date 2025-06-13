@@ -19,6 +19,8 @@ from telethon.tl.functions.messages import ReportRequest
 from telethon.tl.types import (
     InputReportReasonSpam, InputReportReasonFake, InputReportReasonOther
 )
+# ⚙️ Parallel reporting coroutine
+from telethon.tl.functions.account import ReportPeerRequest
 
 from config import BOT_TOKEN, API_ID, API_HASH
 
@@ -128,17 +130,20 @@ async def get_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📝 Select report reason:", reply_markup=reply_markup)
     return REPORT_REASON
 
-# ⚙️ Parallel reporting coroutine
+# ✅ Corrected async reporting function
 async def report_with_session(session_file, target_username, reason_obj, i, total):
     start = time.time()
     try:
         cli = TelegramClient(os.path.join("sessions", session_file), API_ID, API_HASH)
         await cli.start()
 
+        # Resolve the target username to get InputPeer
         res = await cli(ResolveUsernameRequest(target_username))
-        await cli(ReportRequest(
-            peer=res.users[0],
-            id=[],
+        input_peer = await cli.get_input_entity(res.users[0])
+
+        # Perform the report
+        await cli(ReportPeerRequest(
+            peer=input_peer,
             reason=reason_obj,
             message="Reported via Telegram Bot"
         ))
@@ -148,9 +153,8 @@ async def report_with_session(session_file, target_username, reason_obj, i, tota
         return f"✅ Report {i}/{total} from `{session_file}` - ⏱️ {round(end - start, 2)}s"
     except Exception as e:
         end = time.time()
-        return f"❌ Report {i}/{total} from `{session_file}` failed - {e} - ⏱️ {round(end - start, 2)}s"
+        return f"❌ Report {i}/{total} from `{session_file}` failed - {e} - ⏱️ {round(end - start, 2)}s"# 🚀 Final mass reporting executor
 
-# 🚀 Final mass reporting executor
 async def get_reason(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reason = update.message.text.lower()
     if reason == "spam":
