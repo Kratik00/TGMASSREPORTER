@@ -14,4 +14,4 @@ RUN pip install --no-cache-dir -r requirements.txt
 # EXPOSE 8080
 
 # Default run command (auto-start script)
-CMD ["python3", "reper.py"]
+CMD ["python3", "reper_bot.py"]
