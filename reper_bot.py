@@ -14,7 +14,18 @@ from telethon.tl.types import (
     InputReportReasonSpam, InputReportReasonFake, InputReportReasonOther
 )
 from config import BOT_TOKEN, API_ID, API_HASH
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
 
+class DummyServer(BaseHTTPRequestHandler):
+    def do_GET(self):
+        self.send_response(200)
+        self.end_headers()
+        self.wfile.write(b"TGReporter Bot Running")
+
+def run_dummy_server():
+    server = HTTPServer(('0.0.0.0', 8080), DummyServer)
+    server.serve_forever()
 # States
 LOGIN_PHONE, LOGIN_CODE, TARGET_USER, REPORT_COUNT, REPORT_REASON = range(5)
 
@@ -164,6 +175,7 @@ async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # Main bot
 def main():
+    threading.Thread(target=run_dummy_server, daemon=True).start()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
