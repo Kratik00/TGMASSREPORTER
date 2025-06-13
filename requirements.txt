@@ -1,5 +1,4 @@
 telethon
 colorama
-telegram
 asyncio
 python-telegram-bot
