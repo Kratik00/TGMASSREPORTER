@@ -1,41 +1,45 @@
 import os
 import time
 import asyncio
+import threading
+from http.server import HTTPServer, BaseHTTPRequestHandler
+
 from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes,
     MessageHandler, filters, ConversationHandler
 )
+
 from telethon.sync import TelegramClient
-from telethon.sessions import StringSession
 from telethon.tl.functions.contacts import ResolveUsernameRequest
 from telethon.tl.functions.messages import ReportRequest
-from telethon.tl.types import (
-    InputReportReasonSpam, InputReportReasonFake, InputReportReasonOther
-)
-from config import BOT_TOKEN, API_ID, API_HASH
-import threading
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from telethon.tl.types import InputReportReasonSpam, InputReportReasonFake, InputReportReasonOther
 
+from config import BOT_TOKEN, API_ID, API_HASH
+
+# Dummy HTTP Server (for Koyeb / uptime)
 class DummyServer(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
         self.end_headers()
         self.wfile.write(b"TGReporter Bot Running")
 
+    def do_HEAD(self):
+        self.send_response(200)
+        self.end_headers()
+
 def run_dummy_server():
     server = HTTPServer(('0.0.0.0', 8080), DummyServer)
     server.serve_forever()
+
 # States
 LOGIN_PHONE, LOGIN_CODE, TARGET_USER, REPORT_COUNT, REPORT_REASON = range(5)
 
-# /start with banner and promo buttons
+# Start Command
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [
-            InlineKeyboardButton("📣 My Channel", url="https://t.me/URS_LUCIFER"),
-            InlineKeyboardButton("👤 Contact Me", url="https://t.me/LP_LUCIFER")
-        ]
+        [InlineKeyboardButton("📣 My Channel", url="https://t.me/URS_LUCIFER"),
+         InlineKeyboardButton("👤 Contact Me", url="https://t.me/LP_LUCIFER")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
 
@@ -45,7 +49,7 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=reply_markup
     )
 
-# /help
+# Help Command
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "🛠 Available Commands:\n"
@@ -57,7 +61,7 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/help - Show this help message"
     )
 
-# /login flow
+# Login Flow
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📩 Send your phone number (e.g. +91xxxx...):\nOr type /cancel to exit.")
     return LOGIN_PHONE
@@ -85,7 +89,7 @@ async def login_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await client.disconnect()
     return ConversationHandler.END
 
-# /logout
+# Logout
 async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session_file = f"sessions/{update.effective_user.id}.session"
     if os.path.exists(session_file):
@@ -94,8 +98,13 @@ async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     else:
         await update.message.reply_text("⚠️ No session found to logout.")
 
-# /report
+# Report
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    session_path = f"sessions/{update.effective_user.id}.session"
+    if not os.path.exists(session_path):
+        await update.message.reply_text("❗ You're not logged in. Please use /login first.")
+        return ConversationHandler.END
+
     await update.message.reply_text("🎯 Enter target username (without @):\nOr type /cancel to exit.")
     return TARGET_USER
 
@@ -115,7 +124,7 @@ async def get_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("📝 Select report reason:", reply_markup=reply_markup)
     return REPORT_REASON
 
-# Mass reporting - async coroutine per session
+# Async reporting
 async def report_with_session(session_file, target_username, reason_obj, i, total):
     start = time.time()
     try:
@@ -123,7 +132,6 @@ async def report_with_session(session_file, target_username, reason_obj, i, tota
         await cli.start()
 
         res = await cli(ResolveUsernameRequest(target_username))
-
         await cli(ReportRequest(
             peer=res.users[0],
             id=[],
@@ -138,7 +146,7 @@ async def report_with_session(session_file, target_username, reason_obj, i, tota
         end = time.time()
         return f"❌ Report {i}/{total} from `{session_file}` failed - {e} - ⏱️ {round(end - start, 2)}s"
 
-# Run all reports in parallel
+# Final report runner
 async def get_reason(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reason = update.message.text.lower()
     if reason == "spam":
@@ -168,12 +176,12 @@ async def get_reason(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("🎯 Mass reporting completed.")
     return ConversationHandler.END
 
-# /cancel
+# Cancel
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text("❌ Operation cancelled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-# Main bot
+# Main
 def main():
     threading.Thread(target=run_dummy_server, daemon=True).start()
     app = ApplicationBuilder().token(BOT_TOKEN).build()
