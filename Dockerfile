@@ -1,17 +1,20 @@
 # Base image
 FROM python:3.10-slim
 
-# Set workdir
+# Set working directory
 WORKDIR /app
 
-# Copy files
+# Copy all files to the container
 COPY . /app
 
-# Install dependencies
+# ✅ Ensure sessions folder exists (important for Telethon)
+RUN mkdir -p /app/sessions
+
+# Install Python dependencies
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Optional: expose port if needed
-# EXPOSE 8080
+# Optional: expose port for dummy HTTP server
+EXPOSE 8080
 
-# Default run command (auto-start script)
+# Default command to run the bot
 CMD ["python3", "reper_bot.py"]
