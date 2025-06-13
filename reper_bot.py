@@ -4,7 +4,10 @@ import asyncio
 import threading
 from http.server import HTTPServer, BaseHTTPRequestHandler
 
-from telegram import Update, ReplyKeyboardMarkup, ReplyKeyboardRemove, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram import (
+    Update, ReplyKeyboardMarkup, ReplyKeyboardRemove,
+    InlineKeyboardMarkup, InlineKeyboardButton
+)
 from telegram.ext import (
     ApplicationBuilder, CommandHandler, ContextTypes,
     MessageHandler, filters, ConversationHandler
@@ -13,11 +16,16 @@ from telegram.ext import (
 from telethon.sync import TelegramClient
 from telethon.tl.functions.contacts import ResolveUsernameRequest
 from telethon.tl.functions.messages import ReportRequest
-from telethon.tl.types import InputReportReasonSpam, InputReportReasonFake, InputReportReasonOther
+from telethon.tl.types import (
+    InputReportReasonSpam, InputReportReasonFake, InputReportReasonOther
+)
 
 from config import BOT_TOKEN, API_ID, API_HASH
 
-# Dummy HTTP Server (for Koyeb / uptime)
+# 🧠 Conversation states
+LOGIN_PHONE, LOGIN_CODE, TARGET_USER, REPORT_COUNT, REPORT_REASON = range(5)
+
+# 🌐 Dummy HTTP server for Koyeb/Render healthcheck
 class DummyServer(BaseHTTPRequestHandler):
     def do_GET(self):
         self.send_response(200)
@@ -32,27 +40,23 @@ def run_dummy_server():
     server = HTTPServer(('0.0.0.0', 8080), DummyServer)
     server.serve_forever()
 
-# States
-LOGIN_PHONE, LOGIN_CODE, TARGET_USER, REPORT_COUNT, REPORT_REASON = range(5)
-
-# Start Command
+# 🟢 /start
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     keyboard = [
-        [InlineKeyboardButton("\ud83d\udce3 My Channel", url="https://t.me/URS_LUCIFER"),
-         InlineKeyboardButton("\ud83d\udc64 Contact Me", url="https://t.me/LP_LUCIFER")]
+        [InlineKeyboardButton("📣 My Channel", url="https://t.me/URS_LUCIFER"),
+         InlineKeyboardButton("👤 Contact Me", url="https://t.me/LP_LUCIFER")]
     ]
     reply_markup = InlineKeyboardMarkup(keyboard)
-
     await update.message.reply_photo(
         photo="https://graph.org/file/d1991cab84267f8c42e72-3834f7f3e6c18bb7b7.jpg",
-        caption="\ud83d\udc4b Welcome to TG Reporter Tool!\nType /help for commands\n\nStay connected with the developer:",
+        caption="👋 Welcome to TG Reporter Tool!\nType /help for commands\n\nStay connected with the developer:",
         reply_markup=reply_markup
     )
 
-# Help Command
+# 🆘 /help
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
-        "\ud83d\udee0 Available Commands:\n"
+        "🛠 Available Commands:\n"
         "/start - Start the bot\n"
         "/login - Login with your Telegram number\n"
         "/report - Start mass reporting\n"
@@ -61,9 +65,9 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "/help - Show this help message"
     )
 
-# Login Flow
+# 🔑 Login flow
 async def login(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("\ud83d\udce9 Send your phone number (e.g. +91xxxx...):\nOr type /cancel to exit.")
+    await update.message.reply_text("📩 Send your phone number (e.g. +91xxxxxxxxxx):\nOr type /cancel to exit.")
     return LOGIN_PHONE
 
 async def login_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -73,7 +77,7 @@ async def login_phone(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await client.send_code_request(phone)
     context.user_data['client'] = client
     context.user_data['phone'] = phone
-    await update.message.reply_text("\ud83d\udd11 OTP sent! Enter the code:\nOr type /cancel to exit.")
+    await update.message.reply_text("🔐 OTP sent! Please enter the code:\nOr type /cancel to exit.")
     return LOGIN_CODE
 
 async def login_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -82,73 +86,71 @@ async def login_code(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phone = context.user_data['phone']
     try:
         await client.sign_in(phone, code)
-        await update.message.reply_text("\u2705 Login successful! Session saved.")
+        await update.message.reply_text("✅ Login successful! Session saved.")
     except Exception as e:
-        await update.message.reply_text(f"\u274c Login failed: {e}")
+        await update.message.reply_text(f"❌ Login failed: {e}")
     finally:
         await client.disconnect()
     return ConversationHandler.END
 
-# Logout
+# 🚪 /logout
 async def logout(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session_file = f"sessions/{update.effective_user.id}.session"
     if os.path.exists(session_file):
         os.remove(session_file)
-        await update.message.reply_text("\u2705 Logged out and session removed.")
+        await update.message.reply_text("✅ Logged out and session removed.")
     else:
-        await update.message.reply_text("\u26a0\ufe0f No session found to logout.")
+        await update.message.reply_text("⚠️ No session found to logout.")
 
-# Report
+# ⚠️ /report flow
 async def report(update: Update, context: ContextTypes.DEFAULT_TYPE):
     session_path = f"sessions/{update.effective_user.id}.session"
     if not os.path.exists(session_path):
-        await update.message.reply_text("\u2757 You're not logged in. Please use /login first.")
+        await update.message.reply_text("❗ You're not logged in. Please use /login first.")
         return ConversationHandler.END
 
-    await update.message.reply_text("\ud83c\udfaf Enter target username (without @):\nOr type /cancel to exit.")
+    await update.message.reply_text("🎯 Enter target username (without @):\nOr type /cancel to exit.")
     return TARGET_USER
 
 async def get_target(update: Update, context: ContextTypes.DEFAULT_TYPE):
     context.user_data['target'] = update.message.text
-    await update.message.reply_text("\ud83d\udd01 How many accounts to use?\nOr type /cancel to exit.")
+    await update.message.reply_text("🔁 How many accounts to use?\nOr type /cancel to exit.")
     return REPORT_COUNT
 
 async def get_count(update: Update, context: ContextTypes.DEFAULT_TYPE):
     try:
         context.user_data['count'] = int(update.message.text)
     except:
-        await update.message.reply_text("\u2757 Please enter a valid number.")
+        await update.message.reply_text("❗ Please enter a valid number.")
         return REPORT_COUNT
 
     reply_markup = ReplyKeyboardMarkup([["spam", "fake", "other"]], one_time_keyboard=True)
-    await update.message.reply_text("\ud83d\uddd8\ufe0f Select report reason:", reply_markup=reply_markup)
+    await update.message.reply_text("📝 Select report reason:", reply_markup=reply_markup)
     return REPORT_REASON
 
-# Async reporting
+# ⚙️ Parallel reporting coroutine
 async def report_with_session(session_file, target_username, reason_obj, i, total):
     start = time.time()
     try:
         cli = TelegramClient(os.path.join("sessions", session_file), API_ID, API_HASH)
         await cli.start()
 
-        res = await asyncio.wait_for(cli(ResolveUsernameRequest(target_username)), timeout=10)
-        await asyncio.wait_for(cli(ReportRequest(
+        res = await cli(ResolveUsernameRequest(target_username))
+        await cli(ReportRequest(
             peer=res.users[0],
             id=[],
             reason=reason_obj,
             message="Reported via Telegram Bot"
-        )), timeout=10)
+        ))
 
         await cli.disconnect()
         end = time.time()
-        return f"\u2705 Report {i}/{total} from `{session_file}` - \u23f1\ufe0f {round(end - start, 2)}s"
-    except asyncio.TimeoutError:
-        return f"\u274c Report {i}/{total} from `{session_file}` timed out"
+        return f"✅ Report {i}/{total} from `{session_file}` - ⏱️ {round(end - start, 2)}s"
     except Exception as e:
         end = time.time()
-        return f"\u274c Report {i}/{total} from `{session_file}` failed - {e} - \u23f1\ufe0f {round(end - start, 2)}s"
+        return f"❌ Report {i}/{total} from `{session_file}` failed - {e} - ⏱️ {round(end - start, 2)}s"
 
-# Final report runner
+# 🚀 Final mass reporting executor
 async def get_reason(update: Update, context: ContextTypes.DEFAULT_TYPE):
     reason = update.message.text.lower()
     if reason == "spam":
@@ -163,7 +165,7 @@ async def get_reason(update: Update, context: ContextTypes.DEFAULT_TYPE):
     total = len(sessions)
     target_username = context.user_data['target']
 
-    await update.message.reply_text(f"\ud83d\ude80 Starting parallel mass report on @{target_username} using {total} accounts...")
+    await update.message.reply_text(f"🚀 Starting parallel mass report on @{target_username} using {total} accounts...")
 
     tasks = [
         report_with_session(session_file, target_username, reason_obj, i+1, total)
@@ -175,18 +177,18 @@ async def get_reason(update: Update, context: ContextTypes.DEFAULT_TYPE):
     for result in results:
         await update.message.reply_text(result, parse_mode="Markdown")
 
-    await update.message.reply_text("\ud83c\udfaf Mass reporting completed.")
+    await update.message.reply_text("🎯 Mass reporting completed.")
     return ConversationHandler.END
 
-# Cancel
+# ❌ /cancel
 async def cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.message.reply_text("\u274c Operation cancelled.", reply_markup=ReplyKeyboardRemove())
+    await update.message.reply_text("❌ Operation cancelled.", reply_markup=ReplyKeyboardRemove())
     return ConversationHandler.END
 
-# Main
-
+# 🧠 Main function
 def main():
     threading.Thread(target=run_dummy_server, daemon=True).start()
+
     app = ApplicationBuilder().token(BOT_TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -213,7 +215,7 @@ def main():
         fallbacks=[CommandHandler("cancel", cancel)]
     ))
 
-    print("\ud83d\ude80 Bot running...")
+    print("Bot running...")
     app.run_polling()
 
 if __name__ == "__main__":
