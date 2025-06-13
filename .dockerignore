@@ -1,0 +1,7 @@
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+reper.py
+sessions/
+.env  # optional, future-proof
